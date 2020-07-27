@@ -1,6 +1,6 @@
 # pwned
 
-CLI to check if a password has been found in [haveibeenpwned.com/](haveibeenpwned.com)
+CLI to check if a password has been found in [haveibeenpwned.com/](https://haveibeenpwned.com/)
 
 Note that the way the passwords api works, only the first 5 characters of a password are sent to haveibeenpwned.com
 and not the full hash.
