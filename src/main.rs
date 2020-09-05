@@ -1,22 +1,19 @@
 use log::*;
-use reqwest::get;
+use minreq::get;
 use sha::sha1::Sha1;
 use sha::utils::{Digest, DigestExt};
 use std::error::Error;
 
-async fn check_haveibeenpwned(pass: &str) -> Result<String, reqwest::Error> {
+fn check_haveibeenpwned(pass: &str) -> Result<String, minreq::Error> {
     let url = format!("https://api.pwnedpasswords.com/range/{}", pass);
     info!("Requesting to {}", url);
 
-    let text_response = get(&url).await?.text().await;
-    debug!("{:?}", &text_response);
+    let response = get(&url).send()?;
 
-    text_response
+    response.as_str().map(|s| s.to_string())
 }
 
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn Error>> {
-    env_logger::init();
+fn main() -> Result<(), Box<dyn Error>> {
     let mut args = std::env::args();
     let _ = args.next(); // ignore command name
 
@@ -33,7 +30,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
         let hash_slice2 = password_hash[5..].to_uppercase();
         info!("first chars of hashed password {:?}", hash_slice);
 
-        if let Ok(response) = check_haveibeenpwned(&hash_slice).await {
+        if let Ok(response) = check_haveibeenpwned(&hash_slice){
             if let Some(res) = response
                 // .lines()
                 .split("\r\n")
