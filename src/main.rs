@@ -1,8 +1,12 @@
+use color_eyre::eyre::Result;
 use log::*;
 use minreq::get;
-use sha::sha1::Sha1;
-use sha::utils::{Digest, DigestExt};
-use std::error::Error;
+use prettytable::{cell, row, Table};
+use sha::{
+    sha1::Sha1,
+    utils::{Digest, DigestExt, Reset},
+};
+use std::default::Default;
 
 fn check_haveibeenpwned(pass: &str) -> Result<String, minreq::Error> {
     let url = format!("https://api.pwnedpasswords.com/range/{}", pass);
@@ -13,7 +17,8 @@ fn check_haveibeenpwned(pass: &str) -> Result<String, minreq::Error> {
     response.as_str().map(|s| s.to_string())
 }
 
-fn main() -> Result<(), Box<dyn Error>> {
+fn main() -> Result<()> {
+    color_eyre::install()?;
     let mut args = std::env::args();
     let _ = args.next(); // ignore command name
 
@@ -22,15 +27,18 @@ fn main() -> Result<(), Box<dyn Error>> {
         return Ok(());
     }
 
+    let mut table = Table::new();
+    table.add_row(row![br => "Password", "Times Found"]);
+    let mut hash = Sha1::default();
     while let Some(pass) = args.next() {
         debug!("finding {}", &pass);
-        let password_hash = Sha1::default().digest(pass.as_bytes()).to_hex();
+        let password_hash = hash.digest(pass.as_bytes()).to_hex();
         info!("hashed password {:?}", &password_hash);
         let hash_slice = password_hash[0..5].to_uppercase();
         let hash_slice2 = password_hash[5..].to_uppercase();
         info!("first chars of hashed password {:?}", hash_slice);
 
-        if let Ok(response) = check_haveibeenpwned(&hash_slice){
+        if let Ok(response) = check_haveibeenpwned(&hash_slice) {
             if let Some(res) = response
                 // .lines()
                 .split("\r\n")
@@ -41,12 +49,16 @@ fn main() -> Result<(), Box<dyn Error>> {
                 })
                 .find(|(hash, _pass)| *hash == hash_slice2)
             {
-                println!("Found password {}, {} times", pass.to_uppercase(), res.1);
+                // println!("Found password {}, {} times", pass.to_uppercase(), res.1);
+                table.add_row(row![br => pass.to_uppercase(), res.1]);
             } else {
                 eprintln!("Password not found");
+                table.add_row(row![br => pass.to_uppercase(), 0]);
             }
         }
+        hash.reset();
     }
+    table.printstd();
 
     Ok(())
 }
